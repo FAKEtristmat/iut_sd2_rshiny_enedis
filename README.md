@@ -31,11 +31,6 @@ Les technologies suivantes ont été employées pour développer ce projet :
 - **ggpubr** : offre des fonctions supplémentaires pour créer des visualisations statistiques prêtes à être publiées. Il simplifie l'ajout de thèmes, de statistiques descriptives et de légendes aux graphiques
 - **DT** : permet d'intégrer facilement des tables interactives dans des applications Shiny. Il repose sur la librairie JavaScript DataTables, qui permet de trier, filtrer et rechercher dans les tableaux directement depuis l'interface utilisateur.
 
-## Instructions pour l'installation
-Pour cloner et exécuter l'application localement, suivez ces instructions :
-
-```bash
-git clone https://github.com/votre-repo/iut_sd2_rshiny_enedis.git
-cd iut_sd2_rshiny_enedis
-# Lancer l'application
-R -e "shiny::runApp()"
+## Lien du site
+Vous pouvez retrouver ce projet a travers ce lien :
+- [Liens projet](https://arncrd.shinyapps.io/Fusion_V1/)
