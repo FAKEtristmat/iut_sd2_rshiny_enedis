@@ -1,0 +1,187 @@
+---
+title: "FUSION_V1"
+author: "LePoulain"
+date: "2024-10-12"
+output: html_document
+params:
+  code_postal: 41000
+  type_logement: "Tous"  # Options : "Tous", "Ancien", "Neuf"
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Charger les bibliothèques nécessaires
+library(dplyr)
+library(ggplot2)
+library(kableExtra)
+library(readr)
+
+# Charger les données depuis les fichiers CSV
+df_existants <- read.csv("existants_41.csv", header=TRUE, sep=",", dec=".")
+df_neufs <- read.csv("neufs_41.csv", header=TRUE, sep=",", dec=".")
+
+```
+
+
+```{r setup, include=FALSE}
+
+# Ajouter une colonne 'Logement' pour distinguer les types
+df_existants$Logement <- "Ancien"
+df_neufs$Logement <- "Neuf"
+
+# Fusionner les deux datasets
+df <- bind_rows(df_existants, df_neufs)
+
+# Renommer la colonne 'Code_postal_.BAN.'
+df <- df %>%
+  rename(Code_postal = `Code_postal_.BAN.`)
+
+# Convertir les types pour correspondre aux filtres
+df$Code_postal <- as.character(df$Code_postal)
+
+```
+
+Filtrer les données en fonction des paramètres
+
+```{r code_postal}
+# Filtrer par code postal
+df_filtered <- df %>%
+  filter(Code_postal == params$code_postal)
+
+# Filtrer par type de logement
+if (params$type_logement != "Tous") {
+  df_filtered <- df_filtered %>%
+    filter(Logement == params$type_logement)
+}
+
+# Vérification des résultats filtrés
+cat("Nombre de logements dans les données filtrées : ", nrow(df_filtered), "\n")
+
+
+```
+
+Introduction
+Ce rapport présente une analyse des données énergétiques des logements situés dans le département du Loir-et-Cher (41), spécifiquement pour le code postal r params$code_postal. Le type de logement analysé est r params$type_logement.
+
+```{r KPI}
+# Calcul des KPI
+avg_cost <- mean(df_filtered$Coût_chauffage, na.rm = TRUE)
+avg_surface <- mean(df_filtered$Surface_habitable_logement, na.rm = TRUE)
+total_logements <- nrow(df_filtered)
+
+# Afficher les KPI sous forme de tableau
+kable(data.frame(
+  "Indicateur" = c("Coût Moyen Chauffage (€)", "Surface Moyenne Logement (m²)", "Nombre Total de Logements"),
+  "Valeur" = c(round(avg_cost, 2), round(avg_surface, 2), total_logements)
+), caption = "Indicateurs Clés de Performance") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+```{r decile}
+# Calcul des déciles pour le coût ECS
+deciles_cou_ECS <- quantile(df$Coût_ECS, probs=seq(0,1,0.1))
+
+# Créer un tableau avec les déciles sur une ligne
+deciles_table <- data.frame(
+  "Décile" = c("D0", "D1", "D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10"),
+  "Valeur" = round(deciles_cou_ECS, 2)
+)
+
+# Afficher le tableau des déciles
+kable(t(deciles_table$Valeur), col.names = deciles_table$Décile, caption = "Déciles du Coût ECS") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed", "responsive"))
+```
+
+
+
+
+
+```{r Stats_bivaries}
+# Calcul du coefficient de corrélation entre Surface habitable et Coût chauffage
+correlation <- cor(df_filtered$Surface_habitable_logement, df_filtered$Coût_chauffage, use = "complete.obs")
+
+# Afficher le résultat
+cat("Le coefficient de corrélation entre la surface habitable et le coût du chauffage est :", round(correlation, 4))
+
+# Calcul de la répartition des étiquettes DPE
+repartition_DPE <- df_filtered %>%
+  count(Etiquette_DPE) %>%
+  mutate(Percentage = n / sum(n) * 100)
+
+# Affichage de la répartition des étiquettes DPE
+ggplot(repartition_DPE, aes(x = Etiquette_DPE, y = Percentage, fill = Etiquette_DPE)) +
+  geom_bar(stat = "identity") +
+  theme_minimal() +
+  labs(title = "Répartition des Étiquettes DPE",
+       x = "Étiquette DPE",
+       y = "Pourcentage (%)") +
+  scale_fill_brewer(palette = "Blues")
+
+```
+
+```{r Stats_bivaries_2}
+# Calcul de la corrélation
+correlation <- cor(df_filtered$Surface_habitable_logement, df_filtered$Coût_chauffage, use = "complete.obs")
+
+# Affichage de la régression linéaire
+ggplot(df_filtered, aes(x = Surface_habitable_logement, y = Coût_chauffage)) +
+  geom_point(color = "blue") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  labs(title = paste("Corrélation Surface vs Coût de Chauffage : ", round(correlation, 2)),
+       x = "Surface Habitable (m²)",
+       y = "Coût de Chauffage (€)") +
+  theme_minimal()
+
+
+```
+
+Création des graphiques pour illustrer notre analyse.
+
+Histogramme de la surface habitable :
+```{r histo_surface}
+ggplot(df_filtered, aes(x = Surface_habitable_logement)) +
+  geom_histogram(binwidth = 10, fill = "#0072CE", color = "red") +
+  theme_minimal() +
+  labs(
+    title = "Distribution de la surface habitable",
+    x = "Surface habitable (m²)",
+    y = "Nombre de logements"
+  )
+
+```
+
+Boxplot du coût de chauffage par étiquette DPE :
+
+```{r box_cout}
+ggplot(df_filtered, aes(x = Etiquette_DPE, y = Coût_chauffage, fill = Etiquette_DPE)) +
+  geom_boxplot() +
+  theme_minimal() +
+  labs(
+    title = "Coût de chauffage par étiquette DPE",
+    x = "Étiquette DPE",
+    y = "Coût de chauffage (€)"
+  ) +
+  scale_fill_brewer(palette = "Blues")
+
+
+```
+
+Nuage de points avec régression linéaire :
+
+```{r nuage}
+ggplot(df_filtered, aes(x = Surface_habitable_logement, y = Coût_chauffage)) +
+  geom_point(alpha = 0.6, color = "#004B9B") +
+  geom_smooth(method = "lm", se = FALSE, color = "red") +
+  theme_minimal() +
+  labs(
+    title = "Relation entre surface habitable et coût de chauffage",
+    x = "Surface habitable (m²)",
+    y = "Coût de chauffage (€)"
+  )
+```
+
