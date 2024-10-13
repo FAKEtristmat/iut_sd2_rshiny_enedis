@@ -22,10 +22,6 @@ library(readr)
 df_existants <- read.csv("existants_41.csv", header=TRUE, sep=",", dec=".")
 df_neufs <- read.csv("neufs_41.csv", header=TRUE, sep=",", dec=".")
 
-```
-
-
-```{r setup, include=FALSE}
 
 # Ajouter une colonne 'Logement' pour distinguer les types
 df_existants$Logement <- "Ancien"
